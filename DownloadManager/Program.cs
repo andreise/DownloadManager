@@ -87,13 +87,14 @@ namespace DownloadManager
                 return;
 
             List<DownloadTask> orderedTask = this.Tasks.OrderBy(task => task.StartTime).ToList();
+            List<DownloadTask> activeTasks = new List<DownloadTask>(this.Tasks.Count);
             int uncompletedTasks = this.Tasks.Count;
 
             int clock = orderedTask.First().StartTime;
 
             while (uncompletedTasks > 0)
             {
-                List<DownloadTask> activeTasks = new List<DownloadTask>(orderedTask.Count);
+                activeTasks.Clear();
                 foreach (DownloadTask task in orderedTask)
                     if (activeTasks.Count < this.ChannelBandwidth)
                     {
