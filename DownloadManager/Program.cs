@@ -47,6 +47,23 @@ namespace DownloadManager
         }
     }
 
+    sealed class DownloadTaskComparer : IComparer<DownloadTask>
+    {
+        public int Compare(DownloadTask x, DownloadTask y)
+        {
+            if ((object)x == (object)y)
+                return 0;
+
+            if ((object)x == null)
+                return -1;
+
+            if ((object)y == null)
+                return 1;
+
+            return Comparer<int>.Default.Compare(x.StartTime, y.StartTime);
+        }
+    }
+
     sealed class Downloader
     {
         public int ChannelBandwidth { get; private set; }
@@ -69,20 +86,18 @@ namespace DownloadManager
             if (this.Tasks.Count == 0)
                 return;
 
+            SortedSet<DownloadTask> taskQueue = new SortedSet<DownloadTask>(this.Tasks, new DownloadTaskComparer());
 
-            List<DownloadTask> orderedTask = this.Tasks.OrderBy(task => task.StartTime).ToList();
-
-            HashSet<DownloadTask> taskQueue = new HashSet<DownloadTask>(orderedTask);
-
-            int clock = orderedTask.First().StartTime;
+            int clock = taskQueue.Min.StartTime;
 
             while (taskQueue.Count > 0)
             {
                 List<DownloadTask> activeTasks = new List<DownloadTask>(taskQueue.Count);
-                for (int i = 0; i < orderedTask.Count && activeTasks.Count < this.ChannelBandwidth; i++)
+                foreach (DownloadTask task in taskQueue)
+                if (activeTasks.Count < this.ChannelBandwidth)
                 {
-                    if (!orderedTask[i].IsComplete && orderedTask[i].StartTime <= clock)
-                        activeTasks.Add(orderedTask[i]);
+                    if (!task.IsComplete && task.StartTime <= clock)
+                        activeTasks.Add(task);
                 }
 
                 if (activeTasks.Count > 0)
@@ -101,12 +116,9 @@ namespace DownloadManager
                                 activeTasks[i].DownloadedSize++;
                             bandwidthRemainder--;
                         }
-
+                        if (activeTasks[i].IsComplete)
+                            taskQueue.Remove(activeTasks[i]);
                     }
-
-                    foreach (DownloadTask task in activeTasks)
-                        if (task.IsComplete)
-                            taskQueue.Remove(task);
                 }
 
                 clock++;
@@ -176,7 +188,7 @@ namespace DownloadManager
             for (int i = 0; i < downloader.Tasks.Count; i++)
                 Console.WriteLine(downloader.Tasks[i].DownloadTime);
 
-            //Console.ReadLine();
+            Console.ReadLine();
         }
     }
 }
