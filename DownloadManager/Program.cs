@@ -88,21 +88,21 @@ namespace DownloadManager
                 if (activeTasks.Count > 0)
                 {
                     int bandwidthPerTask = this.ChannelBandwidth / activeTasks.Count;
+                    int bandwidthRemainder = this.ChannelBandwidth % activeTasks.Count;
                     for (int i = 0; i < activeTasks.Count; i++)
                     {
                         activeTasks[i].DownloadedSize += bandwidthPerTask;
-                        activeTasks[i].DownloadTime = clock;
+                        if (activeTasks[i].DownloadedSize > activeTasks[i].EstimatedSize)
+                            activeTasks[i].DownloadedSize = activeTasks[i].EstimatedSize;
+                        activeTasks[i].DownloadTime = clock + 1;
+                        if (bandwidthRemainder > 0)
+                        {
+                            if (!activeTasks[i].IsComplete)
+                                activeTasks[i].DownloadedSize++;
+                            bandwidthRemainder--;
+                        }
+
                     }
-                    //int processed = 0;
-                    //for (int i = 0; i < activeTasks.Count; i++)
-                    //{
-                    //    if (!activeTasks[i].IsComplete)
-                    //    {
-                    //        activeTasks[i].DownloadedSize++;
-                    //        if (++processed > bandwidthPerTask % activeTasks.Count)
-                    //            break;
-                    //    }
-                    //}
 
                     foreach (DownloadTask task in activeTasks)
                         if (task.IsComplete)
@@ -176,7 +176,7 @@ namespace DownloadManager
             for (int i = 0; i < downloader.Tasks.Count; i++)
                 Console.WriteLine(downloader.Tasks[i].DownloadTime);
 
-            Console.ReadLine();
+            //Console.ReadLine();
         }
     }
 }
