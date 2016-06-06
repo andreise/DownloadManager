@@ -3,8 +3,6 @@ using System.Globalization;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace DownloadManager
 {
@@ -16,36 +14,36 @@ namespace DownloadManager
             get; private set;
         }
 
-        public int TotalSize
+        public int EstimatedSize
         {
             get;
             private set;
         }
 
-        public int DownloadTimeInterval
-        {
-            get; set;
-        }
-
         public int DownloadedSize
         {
-            get; set;
+            get; internal set;
+        }
+
+        public bool IsComplete
+        {
+            get { return this.DownloadedSize >= this.EstimatedSize; }
         }
 
         public int DownloadTime
         {
-            get { return this.StartTime + this.DownloadTimeInterval; }
+            get; internal set;
         }
 
-        public DownloadTask(int startTime, int totalSize)
+        public DownloadTask(int startTime, int estimatedSize)
         {
             if (startTime < 0)
                 throw new ArgumentOutOfRangeException("startTime", startTime, "Start time must be equals to or greater than zero.");
-            if (totalSize < 0)
-                throw new ArgumentOutOfRangeException("totalSize", startTime, "Size must be equals to or greater than zero.");
+            if (estimatedSize < 0)
+                throw new ArgumentOutOfRangeException("estimatedSize", estimatedSize, "Size must be equals to or greater than zero.");
 
             this.StartTime = startTime;
-            this.TotalSize = totalSize;
+            this.EstimatedSize = estimatedSize;
         }
     }
 
@@ -68,7 +66,51 @@ namespace DownloadManager
 
         public void DownloadAll()
         {
+            if (this.Tasks.Count == 0)
+                return;
 
+
+            List<DownloadTask> orderedTask = this.Tasks.OrderBy(task => task.StartTime).ToList();
+
+            HashSet<DownloadTask> taskQueue = new HashSet<DownloadTask>(orderedTask);
+
+            int clock = orderedTask.First().StartTime;
+
+            while (taskQueue.Count > 0)
+            {
+                List<DownloadTask> activeTasks = new List<DownloadTask>(taskQueue.Count);
+                for (int i = 0; i < orderedTask.Count && activeTasks.Count < this.ChannelBandwidth; i++)
+                {
+                    if (!orderedTask[i].IsComplete && orderedTask[i].StartTime <= clock)
+                        activeTasks.Add(orderedTask[i]);
+                }
+
+                if (activeTasks.Count > 0)
+                {
+                    int bandwidthPerTask = this.ChannelBandwidth / activeTasks.Count;
+                    for (int i = 0; i < activeTasks.Count; i++)
+                    {
+                        activeTasks[i].DownloadedSize += bandwidthPerTask;
+                        activeTasks[i].DownloadTime = clock;
+                    }
+                    //int processed = 0;
+                    //for (int i = 0; i < activeTasks.Count; i++)
+                    //{
+                    //    if (!activeTasks[i].IsComplete)
+                    //    {
+                    //        activeTasks[i].DownloadedSize++;
+                    //        if (++processed > bandwidthPerTask % activeTasks.Count)
+                    //            break;
+                    //    }
+                    //}
+
+                    foreach (DownloadTask task in activeTasks)
+                        if (task.IsComplete)
+                            taskQueue.Remove(task);
+                }
+
+                clock++;
+            }
         }
     }
 
