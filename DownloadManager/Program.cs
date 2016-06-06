@@ -188,7 +188,7 @@ namespace DownloadManager
             for (int i = 0; i < downloader.Tasks.Count; i++)
                 Console.WriteLine(downloader.Tasks[i].DownloadTime);
 
-            Console.ReadLine();
+            //Console.ReadLine();
         }
     }
 }
