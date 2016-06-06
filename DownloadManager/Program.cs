@@ -86,38 +86,39 @@ namespace DownloadManager
             if (this.Tasks.Count == 0)
                 return;
 
-            SortedSet<DownloadTask> taskQueue = new SortedSet<DownloadTask>(this.Tasks, new DownloadTaskComparer());
+            List<DownloadTask> orderedTask = this.Tasks.OrderBy(task => task.StartTime).ToList();
+            int uncompletedTasks = this.Tasks.Count;
 
-            int clock = taskQueue.Min.StartTime;
+            int clock = orderedTask.First().StartTime;
 
-            while (taskQueue.Count > 0)
+            while (uncompletedTasks > 0)
             {
-                List<DownloadTask> activeTasks = new List<DownloadTask>(taskQueue.Count);
-                foreach (DownloadTask task in taskQueue)
-                if (activeTasks.Count < this.ChannelBandwidth)
-                {
-                    if (!task.IsComplete && task.StartTime <= clock)
-                        activeTasks.Add(task);
-                }
+                List<DownloadTask> activeTasks = new List<DownloadTask>(orderedTask.Count);
+                foreach (DownloadTask task in orderedTask)
+                    if (activeTasks.Count < this.ChannelBandwidth)
+                    {
+                        if (!task.IsComplete && task.StartTime <= clock)
+                            activeTasks.Add(task);
+                    }
 
                 if (activeTasks.Count > 0)
                 {
                     int bandwidthPerTask = this.ChannelBandwidth / activeTasks.Count;
                     int bandwidthRemainder = this.ChannelBandwidth % activeTasks.Count;
-                    for (int i = 0; i < activeTasks.Count; i++)
+                    foreach (DownloadTask task in activeTasks)
                     {
-                        activeTasks[i].DownloadedSize += bandwidthPerTask;
-                        if (activeTasks[i].DownloadedSize > activeTasks[i].EstimatedSize)
-                            activeTasks[i].DownloadedSize = activeTasks[i].EstimatedSize;
-                        activeTasks[i].DownloadTime = clock + 1;
+                        task.DownloadedSize += bandwidthPerTask;
+                        if (task.DownloadedSize > task.EstimatedSize)
+                            task.DownloadedSize = task.EstimatedSize;
+                        task.DownloadTime = clock + 1;
                         if (bandwidthRemainder > 0)
                         {
-                            if (!activeTasks[i].IsComplete)
-                                activeTasks[i].DownloadedSize++;
+                            if (!task.IsComplete)
+                                task.DownloadedSize++;
                             bandwidthRemainder--;
                         }
-                        if (activeTasks[i].IsComplete)
-                            taskQueue.Remove(activeTasks[i]);
+                        if (task.IsComplete)
+                            uncompletedTasks--;
                     }
                 }
 
